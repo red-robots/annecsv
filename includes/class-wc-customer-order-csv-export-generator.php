@@ -575,9 +575,15 @@ class WC_Customer_Order_CSV_Export_Generator {
 			'order_number_formatted' => get_post_meta( $order->id, '_order_number_formatted', true ),
 			'order_number'           => get_post_meta( $order->id, '_order_number', true ),
 			'order_date'             => $order->order_date,
+			//this block is custom
 			'bella_date'             => $bella_date,
 			'bella_shipping_date'    => $_delivery_date,
-			'bella_po_num'           => get_post_meta( $order->id, 'purchase_order_num', true ) ? get_post_meta( $order->id, 'purchase_order_num', true ):"0",
+			'bella_po_num'           => get_post_meta( $order->id, 'purchase_order_num', true ) ? get_post_meta( $order->id, 'purchase_order_num', true ):0,
+			'bella_unit_measure'         => '',
+			'bella_inv_class'            => '',
+			'bella_shipping_terms'       => '',
+			'bella_shipping_method'      => apply_filters( 'bella_woocommerce_order_shipping_method',$order->get_shipping_method()),
+			//end custom block
 			'status'                 => $order->get_status(),
 			'shipping_total'         => $order->get_total_shipping(),
 			'shipping_tax_total'     => wc_format_decimal( $order->get_shipping_tax(), 2 ),
@@ -1099,7 +1105,7 @@ class WC_Customer_Order_CSV_Export_Generator {
 			'shipping_country'     => 'shipping_country',
 			'billing_email'        => 'billing_email',
 			'bella_shipping_terms'       => '',//Y
-			'bella_carrier_code'          => '',//Y
+			'bella_shipping_method'          => '',//Y
 			'bella_carrier_account_num'   => '',//N
 		);
 		$data = array();
@@ -1107,7 +1113,7 @@ class WC_Customer_Order_CSV_Export_Generator {
 		foreach ( $headers as $header_key => $_ ) {
 
 			if ( ! isset( $row_data[ $header_key ] ) ) {
-				$row_data[ $header_key ] = $_;
+				$row_data[ $header_key ] = '';
 			}
 
 			$value = $row_data[ $header_key ];
