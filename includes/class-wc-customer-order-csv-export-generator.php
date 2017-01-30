@@ -148,6 +148,8 @@ class WC_Customer_Order_CSV_Export_Generator {
 
 				if(strcmp($this->export_format,'bella_custom')===0){
 					fputs( $stream, $this->get_row_csv_header( $data[0] ) );
+					fputs( $stream, $this->get_row_csv_note( $data[0] ) );
+
 				}
 				// iterate through each line item row and write it
 				foreach ( $data as $row ) {
@@ -159,8 +161,9 @@ class WC_Customer_Order_CSV_Export_Generator {
 				// otherwise simply write the single order row
 				if(strcmp($this->export_format,'bella_custom')===0) {
 					fputs( $stream, $this->get_row_csv_header( $data) );
+					fputs( $stream, $this->get_row_csv_note( $data ) );
 				}
-				fputs( $stream, $this->get_row_csv( $row, $headers ) );
+				fputs( $stream, $this->get_row_csv( $data, $headers ) );
 			}
 		}
 
@@ -177,6 +180,7 @@ class WC_Customer_Order_CSV_Export_Generator {
 		 * @param array $order_ids The order ids.
 		 * @param string $export_format The order export format.
 		 */
+
 		return apply_filters( 'wc_customer_order_csv_export_get_orders_csv', $csv, $order_data, $ids, $this->export_format );
 	}
 
@@ -207,7 +211,11 @@ class WC_Customer_Order_CSV_Export_Generator {
 		 * }
 		 * @param \WC_Customer_Order_CSV_Export_Generator $this, generator instance
 		 */
-		return apply_filters( 'wc_customer_order_csv_export_order_headers', $column_headers, $this );
+
+		if(strcmp($this->export_format,'bella_custom')!==0) {
+			return apply_filters( 'wc_customer_order_csv_export_order_headers', $column_headers, $this );
+		}
+		return $column_headers;
 	}
 
 
@@ -569,6 +577,21 @@ class WC_Customer_Order_CSV_Export_Generator {
 		if($_delivery_date) $_delivery_date = $_delivery_date->format('Ymd');
 		else $_delivery_date = $now;
 		if(!$_delivery_date) $_delivery_date = $now;
+		$bella_notes = $order->customer_message;
+		if(strlen($bella_notes)>1000){
+			$bella_notes = substr($bella_notes,0,1000);
+			if(!$bella_notes){
+				$bella_notes = '';
+			}
+		}
+		$bella_po = get_post_meta( $order->id, 'purchase_order_num', true ) ? get_post_meta( $order->id, 'purchase_order_num', true ):0;
+		if(strlen(strval($bella_po))>17) {
+			$bella_po = substr(strval($bella_po),0,17);
+			if(!$bella_po) {
+				$bella_po = '';
+			}
+		}
+		$bella_name = $order->shipping_first_name. ' '. $order->shipping_last_name;
 
 		$order_data = array(
 			'order_id'               => $order->id,
@@ -576,13 +599,15 @@ class WC_Customer_Order_CSV_Export_Generator {
 			'order_number'           => get_post_meta( $order->id, '_order_number', true ),
 			'order_date'             => $order->order_date,
 			//this block is custom
+			'bella_name'             => $bella_name,
 			'bella_date'             => $bella_date,
 			'bella_shipping_date'    => $_delivery_date,
-			'bella_po_num'           => get_post_meta( $order->id, 'purchase_order_num', true ) ? get_post_meta( $order->id, 'purchase_order_num', true ):0,
-			'bella_unit_measure'         => '',
-			'bella_inv_class'            => '',
-			'bella_shipping_terms'       => '',
+			'bella_po_num'           => $bella_po,
+			'bella_unit_measure'         => 'EA',
+			'bella_inv_class'            => 'AVAIL',
+			'bella_shipping_terms'       => 'PP',
 			'bella_shipping_method'      => apply_filters( 'bella_woocommerce_order_shipping_method',$order->get_shipping_method()),
+			'bella_order_notes'          => $bella_notes,
 			//end custom block
 			'status'                 => $order->get_status(),
 			'shipping_total'         => $order->get_total_shipping(),
@@ -679,7 +704,11 @@ class WC_Customer_Order_CSV_Export_Generator {
 		 * @param \WC_Order $order WC Order object
 		 * @param \WC_Customer_Order_CSV_Export_Generator $this, generator instance
 		 */
-		return apply_filters( 'wc_customer_order_csv_export_order_row', $order_data, $order, $this );
+
+		if(strcmp($this->export_format,'bella_custom')!==0) {
+			return apply_filters( 'wc_customer_order_csv_export_order_row', $order_data, $order, $this );
+		}
+		return $order_data;
 	}
 
 
@@ -721,7 +750,7 @@ class WC_Customer_Order_CSV_Export_Generator {
 		$args = array(
 			'post_id' => $order->id,
 			'approve' => 'approve',
-			'type'    => 'order_note'
+			'type'    => 'order_note',
 		);
 
 		remove_filter( 'comments_clauses', $callback );
@@ -1093,8 +1122,7 @@ class WC_Customer_Order_CSV_Export_Generator {
 			'bella_shipping_date'  => '',//Y
 			'bella_po_num'         => '',//Y
 			'customer_id'          => 'customer_id',
-			'shipping_first_name'  => 'shipping_first_name',
-			'shipping_last_name'   => 'shipping_last_name',
+			'bella_name'            => '',//Y
 			'shipping_address_1'   => 'shipping_address_1',
 			'shipping_address_2'   => 'shipping_address_2',
 			'shipping_address_3'   => '',//N
@@ -1124,7 +1152,44 @@ class WC_Customer_Order_CSV_Export_Generator {
 		return $this->array_to_csv_row( $data );
 	}
 
+	/**
+	 * Get the CSV row for the given row data but this is the N File for custom bella export
+	 *
+	 * This is abstracted so the provided data can be matched to the CSV headers
+	 * set and the CSV delimiter and enclosure can be controlled from a single method
+	 *
+	 * @since 3.11.2.-1
+	 * @param array $row_data Row data
+	 * @param array $headers CSV column headers
+	 * @return string generated CSV row
+	 */
+	private function get_row_csv_note( $row_data) {
 
+		if ( empty( $row_data ) || empty($row_data['bella_order_notes']) ) {
+			return '';
+		}
+		$headers = array(
+			'order_id'              => 'order_id',//Y
+			'bella_line_num'        => '',//N
+			'bella_order_notes'     => '',//N
+			'bella_note_type'       => '',//N
+
+		);
+		$data = array();
+		$data[] = 'N';
+		foreach ( $headers as $header_key => $_ ) {
+
+			if ( ! isset( $row_data[ $header_key ] ) ) {
+				$row_data[ $header_key ] = '';
+			}
+
+			$value = $row_data[ $header_key ];
+			$value = $this->escape_cell_formulas( $value );
+
+			$data[] = $value;
+		}
+		return $this->array_to_csv_row( $data );
+	}
 
 	/**
 	 * Take an array of data and return it as a CSV-formatted string
