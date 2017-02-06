@@ -1125,7 +1125,7 @@ class WC_Customer_Order_CSV_Export_Generator {
 			'bella_shipping_date'  => '',//Y
 			'bella_po_num'         => '',//Y
 			'customer_id'          => 'customer_id',
-			'billing_company'      => 'billing_company',//Y
+			'shipping_company'     => 'shipping_company',//Y
 			'shipping_address_1'   => 'shipping_address_1',
 			'shipping_address_2'   => 'shipping_address_2',
 			'shipping_address_3'   => '',//N
