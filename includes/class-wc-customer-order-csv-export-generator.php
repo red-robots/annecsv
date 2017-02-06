@@ -584,6 +584,9 @@ class WC_Customer_Order_CSV_Export_Generator {
 				$bella_notes = '';
 			}
 		}
+		$bella_notes = str_replace("\n",' ',$bella_notes);
+		$bella_notes = str_replace("\r",' ',$bella_notes);
+		$bella_notes = str_replace("\t",' ',$bella_notes);
 		$bella_po = get_post_meta( $order->id, 'purchase_order_num', true ) ? get_post_meta( $order->id, 'purchase_order_num', true ):0;
 		if(strlen(strval($bella_po))>17) {
 			$bella_po = substr(strval($bella_po),0,17);
