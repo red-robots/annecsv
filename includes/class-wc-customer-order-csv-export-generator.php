@@ -572,11 +572,7 @@ class WC_Customer_Order_CSV_Export_Generator {
 		if($bella_date) $bella_date = $bella_date->format('Ymd');
 		else $bella_date = $now;
 		if(!$bella_date) $bella_date = $now;
-		$_delivery_date = get_post_meta( $order->id, '_delivery_date', true );
-		if($_delivery_date) $_delivery_date = new DateTime(get_post_meta( $order->id, '_delivery_date', true ));
-		if($_delivery_date) $_delivery_date = $_delivery_date->format('Ymd');
-		else $_delivery_date = $now;
-		if(!$_delivery_date) $_delivery_date = $now;
+		$_delivery_date = $now;
 		$bella_notes = $order->customer_message;
 		if(strlen($bella_notes)>1000){
 			$bella_notes = substr($bella_notes,0,1000);
